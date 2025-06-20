@@ -4,6 +4,7 @@ const router = express();
 // Importando as rotas.
 // Rotas do usuário.
 router.use("/api/users", require('./UserRoutes'));
+router.use("/api/os", require('./OsRoutes'));
 // router.use("/api/clients", require('./ClientsRoutes'));
 // router.use("/api/os/", require('./OsRoutes'));
 

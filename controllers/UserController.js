@@ -1,4 +1,4 @@
-const User = require("../models/userModel");
+const { User } = require("../models/indexModels");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { passHash, generateToken } = require("../utils/passHash");
@@ -242,15 +242,49 @@ const recoveryUser = async (req, res) => {
       return res.status(400).json({ messa: 'O email é obrigatório.' });      
     }
     // Verificando se o usuário existe.
-    const verofyEmail = await User.findOne({ where: { email }});
+    const verifyEmail = await User.findOne({ where: { email }});
     if(!verifyEmail){
       return res.status(404).json({ message: "Usuário não encontrado, tente realizar o cadastro." });
     }
-    // 
+    // Lógica para enviar o email de recuperação de senha.
+    const hashRecoverPassword = await bcrypt.hash(verifyEmail.email + Date.now(), 10);
+    // Salvando a hash de recuperação de senha no usuário.
+    verifyEmail.hash_recover_password = hashRecoverPassword;
+    await verifyEmail.save();
+    // Aqui implemnto a lógica de enviar o email de recuperação de senha, com o link para a página de recuperação.
+    // Exemplo de link: http://localhost:5173/recovery/?email=usuario.email&hash=hashRecoverPassword
+    console.log('Link de recuperação de senha: http://localhost:5173/recovery/?email=' + verifyEmail.email + '&hash=' + hashRecoverPassword);
+    return res.status(200).json({ message: 'Email de recuperação enviado com sucesso.'});
 
   } catch (error) {
     return res.status(500).json({ message: 'Erro na função de recuperar usuário.' });
   }
+}
+
+// Depois de configurar um sistema de envio de email, essa rota será implementada para renovar a senha do usuário.
+// A rota será acessada pelo link enviado no email de recuperação de senha.
+const renewPassword = async (req, res) => {
+  console.log('recuperando dados do parametros')
+  console.log(req.query);
+  const { email, hash } = req.query;
+  console.log('email: ' + email);
+  console.log('Hash: ' + hash);
+  // Verificando se o email e a hash foram informados.
+  if(!email || !hash){
+    return res.status(400).json({ message: 'Email e hash são obrigatórios.' });
+  }
+  // Verificando se o usuário existe.
+  const existsUser = await User.findOne({ where: { email }});
+  if(!existsUser){
+    return res.status(404).json({ message: "Usuário não encontrado." });
+  }
+  // Verificando se a hash de recuperação de senha é válida.
+  if(existsUser.hash_recover_password === hash){
+    return res.status(200).json({ message: 'Rota de recuperação de senha implementada, mas não finalizada.' });
+  }else{
+    return res.status(400).json({ message: 'Hash de recuperação de senha inválida.' });
+  }
+  res.status(200).json({ message: 'Rota de recuperação de senha não implementada.' });
 }
 
 
@@ -262,6 +296,7 @@ module.exports = {
   updateUserSelf,
   // currentUser,
   // getRoleId,
-  // recoveryUser,
+  recoveryUser,
+  renewPassword,
   // updatedPasswordWithTimePass
 }

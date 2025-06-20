@@ -13,7 +13,7 @@ const path = require('path');
 const cors = require('cors');
 
 // Importando models.
-//const { sequelize: sequelize_models } = require('./models/indexModels');
+const { sequelize: sequelize_models } = require('./models/indexModels');
 
 // Inicializando itens requidos.
 const app = express();

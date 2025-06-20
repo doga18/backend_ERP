@@ -15,7 +15,8 @@ const {
   // currentUser,
   getAllUsers,
   // getRoleId,
-  // recoveryUser,
+  recoveryUser,
+  renewPassword,
   // updatedPasswordWithTimePass
 } = require('../controllers/UserController');
 
@@ -30,7 +31,8 @@ router.put('/editself/:userTarget', imageUpload.single('imagePerfil'), photoVali
 // router.get('/:id', authGuard, currentUser);
 router.get('/', authGuard, getAllUsers)
 // router.get('/userRole/:idRole', authGuard, getRoleId)
-// router.post('/recovery', recoveryUser)
+router.post('/recovery', recoveryUser)
+router.get('/recovery', renewPassword);
 // router.put('/renew', authGuard, updatedPasswordWithTimePass)
 
 // Rotas protegidas de user.
