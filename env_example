@@ -1,0 +1,21 @@
+# Dados de conexão da DB.
+DB_HOST = "127.0.0.1"
+DB_PORT = "5432"
+DB_USER = "root"
+DB_PASS = ""
+DB_DATABASE = "system_ERP"
+
+# Porta do project da API.
+APP_PORT = 3001
+APP_HOST = "localhost"
+
+DB_NAME = "postgres"
+
+# JWT SECRET
+
+# Configurando o JWT_SECRET
+JWT_SECRET = "CHAVE_AQUI"
+KEY_DEVELOPMENT = "CHAVE_DEVELOPMENT_AQUI"
+
+# HASH DE RESET DE BD (RARAMENTE SERÁ USADA.) Desabilitado em produção.
+FORBIDEN_HASH = "USADO_PARA_REDEFINIR_O_BANCO_DE_DADOS"
