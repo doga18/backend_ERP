@@ -113,6 +113,7 @@ const loginUser = async (req, res) => {
         const userRetorned = user.toJSON();
         delete userRetorned.password;
         delete userRetorned.lastpassword;
+        delete userRetorned.hash_recover_password; // Removendo o hash de recuperação de senha para não expor a informação.
         userRetorned.token = token;
         res.status(200).json({
           user: userRetorned,
