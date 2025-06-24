@@ -33,14 +33,14 @@ const getAllUsers = async (req, res) => {
     return res.status(200).json(users);
   } catch (error) {
     console.error('Erro ao buscar usuários:', error);
-    return res.status(500).json({ message: 'Erro ao buscar usuários.' });
+    return res.status(500).json({ error: 'Erro ao buscar usuários.' });
   }
 }
 // Função para criar um novo usuário.
 const createUser = async (req, res) => {
   try {
     if(!req.body) {
-      return res.status(400).json({ message: 'Dados inválidos.' });
+      return res.status(400).json({ error: 'Dados inválidos.' });
     }
     const {
       name,
@@ -50,12 +50,12 @@ const createUser = async (req, res) => {
     } = req.body;
     // Validando os dados recebidos.
     if (!name || !lastname || !email || !password) {
-      return res.status(400).json({ message: 'Todos os campos são obrigatórios.' });
+      return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
     }
     // Verificando se o usuário já existe.
     const existingUser = await User.findOne({ where: { email } });
     if(existingUser) {
-      return res.status(400).json({ message: 'Usuário já existe, tente recuperar sua senha no link http://localhost:5173/recovery/?email=' + email + '.' })
+      return res.status(400).json({ error: 'Usuário já existe, tente recuperar sua senha no link http://localhost:5173/recovery/?email=' + email + '.' })
       res.status(200)
     }else{
       // Criando o novo usuário com criptografia de senha.
@@ -83,7 +83,7 @@ const createUser = async (req, res) => {
       })
     }
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao criar usuário.' });
+    res.status(500).json({ error: 'Erro ao criar usuário.' });
   }
   
 }
@@ -93,11 +93,11 @@ const loginUser = async (req, res) => {
   try {
     // Validando os dados recebidos.
     if(!req.body){
-      return res.status(400).json({ message: 'Dados inválidos.' });
+      return res.status(400).json({ error: 'Dados inválidos.' });
     }
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ message: 'Todos os campos são obrigatórios.' });
+      return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
     }
     // Verificando se o usuário existe.
     const user = await User.findOne({ where: { email }});
@@ -120,13 +120,13 @@ const loginUser = async (req, res) => {
           message: 'Usuário logado com sucesso.',
         })
       }else{
-        return res.status(400).json({ message: 'Senha inválida.' });
+        return res.status(400).json({ error: 'Senha inválida.' });
       }
     }else{
-      return res.status(400).json({ message: 'Usuário não encontrado.' });
+      return res.status(400).json({ error: 'Usuário não encontrado.' });
     }
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao fazer login.' });
+    res.status(500).json({ error: 'Erro ao fazer login.' });
     console.log(error);
   }
 }
