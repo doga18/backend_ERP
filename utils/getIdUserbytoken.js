@@ -14,7 +14,7 @@ const getUserIdByToken = async (req) => {
     const user = await User.findByPk(decoded.id);
     return user.userId;
   } catch (error) {
-    console.error('Erro ao obter o ID do usuário:', error);
+    // console.error('Erro ao obter o ID do usuário:', error);
     throw new Error('Erro ao obter o ID do usuário');
 
   }

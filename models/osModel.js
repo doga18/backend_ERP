@@ -66,14 +66,6 @@ const Os = sequelize.define('OS', {
     allowNull: false,
     defaultValue: 'Normal', // Prioridade inicial da OS.
   },
-  assignedTo: {
-    type: DataTypes.INTEGER,
-    references: {
-      model: User, // Referência ao modelo de usuário.
-      key: 'userId',
-    },
-    allowNull: true, // Permite que seja nulo inicialmente.
-  },
   budget:{
     type: DataTypes.DECIMAL(10, 2), // Valor do orçamento da OS.
     allowNull: true, // Permite que seja nulo inicialmente.
@@ -82,6 +74,15 @@ const Os = sequelize.define('OS', {
     type: DataTypes.DECIMAL(10, 2), // Desconto aplicado na OS.
     allowNull: true, // Permite que seja nulo inicialmente.
   },
+  // Vinculações
+  assignedTo: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: User, // Referência ao modelo de usuário.
+      key: 'userId',
+    },
+    allowNull: true, // Permite que seja nulo inicialmente.
+  }
 }, {
   timestamps: true,
 });
