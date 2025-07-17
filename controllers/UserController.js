@@ -9,10 +9,10 @@ const { tryDeleteFile } = require("../middlewares/handleFile");
 const verifyUserToAlter = async (requesterRole, targetRole) => {
   const roleHierarchy = ['Admin', 'Owner', 'Manager', 'Employee', 'Supllier']
   const requesterIndex = roleHierarchy.indexOf(requesterRole);
-  const targerIndex = roleHierarchy.indexOf(targetRole);
-  console.log(`O usuário requisitor tem permissão ${requesterIndex} e o alvo da edição tem a permissão de ${targerIndex}`);
+  const targertIndex = roleHierarchy.indexOf(targetRole);
+  console.log(`O usuário requisitor tem permissão ${requesterIndex} e o alvo da edição tem a permissão de ${targertIndex}`);
   // O usuário que solicita a edição, só poderá reditar permissões igual ou inferior do cargo dele.
-  return requesterIndex <= targerIndex;
+  return requesterIndex <= targertIndex;
 }
 
 const roleMapping = {

@@ -2,6 +2,7 @@ const { User, Os } = require('../models/indexModels');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const { Op } = require('sequelize');
 
 // Manipulando arquivos.
 const { tryDeleteFile } = require('../middlewares/handleFile');
@@ -20,7 +21,7 @@ const getAllOs = async (req, res) => {
   }
   // Parâmetros de consulta para paginação, se necessário.
   const page = parseInt(req.query.page) || 1; // Página atual, padrão é 1.
-  const limit = parseInt(req.query.limit) || 10; // Limite de resultados por página, padrão é 10.
+  const limit = parseInt(req.query.limit) || 5; // Limite de resultados por página, padrão é 10.
   const offset = (page - 1) * limit; // Cálculo do offset para a consulta.
 
   try {
@@ -59,11 +60,15 @@ const getAllOs = async (req, res) => {
     })
   }
 }
-// Função para buscar uma OS pelo ID.
-const getOsById = async (req, res) => {
+// Função para buscar uma OS pelo os_number.
+const getOsById_number = async (req, res) => {
   try {
     // Tentando localizar OS pelo ID.
-    const osSearch = await Os.findByPk(req.params.id, {
+    const id_number = req.params.id;
+    const osSearch = await Os.findOne({
+      where: {
+        os_number: id_number
+      },
       include: [
         {
           model: User,
@@ -82,6 +87,108 @@ const getOsById = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: 'Erro ao buscar OS pelo ID.'
+    });
+  }
+}
+// Função para buscar uma OS pelo UUID
+const getOsById = async (req, res) => {
+  try {
+    // Tentando localizar OS pelo ID.
+    const id_uuid = req.params.id;
+    const osSearch = await Os.findByPk(id_uuid, {
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['userId', 'name', 'email']
+        }
+      ]
+    });
+    if(osSearch) {
+      return res.status(200).json(osSearch);
+    }
+    else {
+      return res.status(404).json({
+        message: 'OS nao encontrada.'
+      });
+    }
+  }
+  catch (error) {
+    //console.error('Erro ao buscar OS pelo ID:', error);
+    return res.status(500).json({
+      message: 'Erro ao buscar OS pelo ID.'
+    });
+  }
+}
+// Função para buscar a Os por parametros, como Nome do cliente, equipamento, prioridade.
+const getOsByParams = async (req, res) => {
+  // Tentando a procura por os parâmetros informados.
+  try {
+    // Verificando as variáveis que podem mudar o resultado da busca.
+    const page = parseInt(req.query.page) || 1; // Página atual, padrão é 1.
+    const limit = parseInt(req.query.limit) || 5; // Limite de resultados por página, padrão é 10.
+    const offset = (page - 1) * limit; // Cálculo do offset para a consulta.
+    const assignedTo = req.query.assignedTo || null;
+    const q = req.query.q;
+    if(!q && !assignedTo){
+      return res.status(400).json({
+        message: 'Para executar uma busca, algum argumento precisa ser informado.'
+      })
+    }
+    if(assignedTo !== null){
+      const qAssignedTo = await Os.findAll({
+        where: {
+          assignedTo: assignedTo
+        },
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: ['userId', 'name', 'email']
+          }
+        ]
+      })
+      if(qAssignedTo){
+        return res.status(200).json({        
+          total: qAssignedTo.length,
+          totalPages: Math.ceil(qAssignedTo.length / limit),
+          currentPage: page,
+          data: qAssignedTo,
+        });
+      }
+    }
+    // Buscando dados se a busca informar o assignedTo.
+    
+    // Tentando busca por title
+    const qTitle = await Os.findAll({
+      where: {
+        title: {
+          [Op.iLike]: `%${q}%`
+        }
+      },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['userId', 'name', 'email']
+        }
+      ]
+    })
+    if(qTitle){
+      return res.status(200).json({        
+        total: qTitle.length,
+        totalPages: Math.ceil(qTitle.length / limit),
+        currentPage: page,
+        data: qTitle,
+      });
+    }
+    return res.status(400).json({
+      message: 'Nenhuma OS encontrada com os parâmetros informados.'
+    })
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      message: 'Erro ao buscar OS por parâmetros.'
     });
   }
 }
@@ -208,6 +315,8 @@ const updateOs = async (req, res) => {
 module.exports = {
   getAllOs,
   getOsById,
+  getOsById_number,
   createOs,
-  updateOs
+  updateOs,
+  getOsByParams
 }
