@@ -40,6 +40,7 @@ const createNewClient = async (req, res) => {
     }
     const { 
       name,
+      lastname,
       email,
       password = null,
       contact,
@@ -49,7 +50,10 @@ const createNewClient = async (req, res) => {
       state,
       country,
       zipCode,
-      assignedTo = idUser
+      assignedTo = idUser,
+      complement,
+      autorizationContactPhone,
+      autorizationContactEmail
     } = req.body;
     // Verificando se os dados sensíveis foram informados.
     if(!name, !email, !contact, !address){
@@ -60,6 +64,7 @@ const createNewClient = async (req, res) => {
     // Criando um novo Client.
     const newClient = await Client.create({ 
       name,
+      lastname,
       email,
       password,
       contact,
@@ -69,7 +74,10 @@ const createNewClient = async (req, res) => {
       state,
       country,
       zipCode,
-      assignedTo
+      assignedTo,
+      complement,
+      autorizationContactPhone,
+      autorizationContactEmail
     });
     // const newClient = await Client.create({ name, email, phone });
     return res.status(201).json(newClient);

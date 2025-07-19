@@ -13,6 +13,10 @@ const Client = sequelize.define('Client', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  lastname: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   email: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -52,6 +56,20 @@ const Client = sequelize.define('Client', {
   zipCode: {
     type: DataTypes.STRING,
     allowNull: true,
+  },
+  complement: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  autorizationContactPhone: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  autorizationContactEmail:{
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
   },
   // Referênciando a coluna assignedTo para salvar na criação.
   assignedTo: {
