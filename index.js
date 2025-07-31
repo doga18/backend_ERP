@@ -68,5 +68,5 @@ app.get("/", (req, res) => {
 // Inicializando o servidor.
 app.listen(process.env.APP_PORT, () => {
   const link = process.env.APP_HOST;  
-  console.log(`Servidor está rodando na porta ${process.env.APP_PORT} \nLink: http://${link}:${process.env.APP_PORT}`);
+  console.log(`Servidor está rodando na porta ${process.env.APP_PORT} \nLink: ${link}:${process.env.APP_PORT}`);
 })
