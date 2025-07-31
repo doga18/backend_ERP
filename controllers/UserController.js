@@ -1,4 +1,4 @@
-const { User } = require("../models/indexModels");
+const { User, Role} = require("../models/indexModels");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { passHash, generateToken } = require("../utils/passHash");
@@ -34,6 +34,29 @@ const getAllUsers = async (req, res) => {
   } catch (error) {
     console.error('Erro ao buscar usuários:', error);
     return res.status(500).json({ error: 'Erro ao buscar usuários.' });
+  }
+}
+// GetQtd about Users
+const getSummaryClients = async (req, res) => {
+  try {
+    const usersCount = await User.findAndCountAll({
+      // Removendo dados sensíveis para passar para a api..
+      attributes: { exclude: ['password', 'lastpassword', 'hash_recover_password'] },
+      include: {
+        model: Role,
+        as: 'role',
+        attributes: ['name']
+      }
+    });
+    return res.status(200).json({
+      count: usersCount.count,
+      rows: usersCount.rows
+    });
+  } catch (error) {
+    console.log('Erro ao coletar os usuários e a quantidade de usuários do banco de dados: ' + error);
+    return res.status(500).json({
+      error: "Erro interno. Tente novamente mais tarde."
+    })
   }
 }
 // Função para criar um novo usuário.
@@ -291,6 +314,7 @@ const renewPassword = async (req, res) => {
 
 module.exports = {
   getAllUsers,
+  getSummaryClients,
   createUser,
   loginUser,
   updateUser,

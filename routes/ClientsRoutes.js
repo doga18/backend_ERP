@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 
 // Validation
-const { photoValidation } = require('../middlewares/photoValidation');
+const { photoValidation, imagePerfilValidation } = require('../middlewares/photoValidation');
 
 // Import Multer para lidar com arquivos.
 const { imageUpload } = require('../middlewares/imageUpload');
 
 const {
   getAllClients,
+  searchClients,
   createNewClient,
   editClient
 } = require('../controllers/ClientsController');
@@ -17,8 +18,9 @@ const {
 const { authGuard } = require('../middlewares/authGuard');
 
 // Rotas dos Clients
-router.get('/Qtd', authGuard, getAllClients);
+router.get('/qtd', authGuard, getAllClients);
+router.get('/searchClients', authGuard, searchClients);
 router.post('/', authGuard, createNewClient);
-router.put('/:id', authGuard, editClient);
+router.put('/:id', authGuard, imageUpload.single('imagePerfil'), imagePerfilValidation(), editClient);
 
 module.exports = router;

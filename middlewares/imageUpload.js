@@ -33,18 +33,24 @@ const imageStorage = multer.diskStorage({
 const imageUpload = multer({
   storage: imageStorage,
   limits: {
-    fileSize: 1024 * 1024 * 15 // 15MB
+    fileSize: 1024 * 1024 * 15 // 15MB por arquivo
   },
   fileFilter: (req, file, cb) => {
-    console.log('Resultado da tentativa de envio de arquivo.')
-    console.log(file);
-    if(file.mimetype === "image/jpeg" || file.mimetype === "image/png" || file.mimetype === "image/jpg" || file.mimetype === "image/png" || file.mimetype === "image/gif" || file.mimetype === "image/webp"){
+    if (
+      file.mimetype === "image/jpeg" ||
+      file.mimetype === "image/png" ||
+      file.mimetype === "image/jpg" ||
+      file.mimetype === "image/gif" ||
+      file.mimetype === "image/webp"
+    ) {
       cb(null, true);
     } else {
-      cb(null, false);
-      return cb(new Error("Formato de arquivo inválido. Use apenas imagens JPG, PNG, GIF ou JPEG."));
+      cb(new Error("Formato de arquivo inválido. Use apenas imagens JPG, PNG, GIF ou JPEG."), false);
     }
   }
-})
+});
+
+// Para aceitar 1 ou mais arquivos, use imageUpload.array('nomeDoCampo', quantidadeMaxima)
+// Exemplo de uso em uma rota: router.post('/upload', imageUpload.array('images', 10), controller)
 
 module.exports = { imageUpload };

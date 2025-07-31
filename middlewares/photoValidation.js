@@ -32,7 +32,33 @@ const photoValidation = () => {
   ];
 }
 
+const imagePerfilValidation = () => {
+  return [
+    body("imagePerfil")
+      .custom((value, {req}) => {
+        if(!req.file){
+          throw new Error("A imagem é obrigatória");
+        }
+        return true;
+      })
+  ]
+}
+
+const imagesOsValidation = () => {
+  return [
+    body("images")
+      .custom((value, {req}) => {
+        if(!req.files || req.files.length === 0){
+          throw new Error("Ao menos uma imagem é obrigatória...");
+        }
+        return true;
+      })
+  ]
+}
+
 
 module.exports = {
   photoValidation,
+  imagePerfilValidation,
+  imagesOsValidation
 }

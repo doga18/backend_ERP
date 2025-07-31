@@ -16,7 +16,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js"
+    "start": "nodemon index.js",
+    "init": "wsl -d Ubuntu-24.04 -e bash -c \"sudo service postgresql start \" && echo 'Linux e PostgreSQL iniciados' && nodemon index.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

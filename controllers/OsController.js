@@ -1,8 +1,9 @@
-const { User, Os } = require('../models/indexModels');
+const { User, Os, Files } = require('../models/indexModels');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { Op } = require('sequelize');
+const { sequelize } = require('../models/indexModels');
 
 // Manipulando arquivos.
 const { tryDeleteFile } = require('../middlewares/handleFile');
@@ -31,6 +32,11 @@ const getAllOs = async (req, res) => {
           model: User,
           as: 'user', // <--- CORRETO, igual ao alias da associação
           attributes: ['userId', 'name', 'email']
+        }
+        ,{
+          model: Files,
+          as: 'files',
+          attributes: ['fileName', 'fileUrl']
         }
       ],
       order: [['createdAt', 'DESC']],
@@ -75,6 +81,11 @@ const getOsById_number = async (req, res) => {
           as: 'user',
           attributes: ['userId', 'name', 'email']
         }
+        ,{
+          model: Files,
+          as: 'files',
+          attributes: ['fileName', 'fileUrl']
+        }
       ]
     });
     if (osSearch) {
@@ -101,6 +112,11 @@ const getOsById = async (req, res) => {
           model: User,
           as: 'user',
           attributes: ['userId', 'name', 'email']
+        }
+        ,{
+          model: Files,
+          as: 'files',
+          attributes: ['fileName', 'fileUrl']
         }
       ]
     });
@@ -146,6 +162,11 @@ const getOsByParams = async (req, res) => {
             as: 'user',
             attributes: ['userId', 'name', 'email']
           }
+          ,{
+            model: Files,
+            as: 'files',
+            attributes: ['fileName', 'fileUrl']
+          }
         ]
       })
       if(qAssignedTo){
@@ -172,6 +193,11 @@ const getOsByParams = async (req, res) => {
           as: 'user',
           attributes: ['userId', 'name', 'email']
         }
+        ,{
+          model: Files,
+          as: 'files',
+          attributes: ['file_name', 'file_url']
+        }
       ]
     })
     if(qTitle){
@@ -192,6 +218,28 @@ const getOsByParams = async (req, res) => {
     });
   }
 }
+// Função de resumo de status das OS para infográficos.
+const getOsSummary = async (req, res) => {
+  try {
+    // Coletando todas as Os e seus status.
+    const allOsResume = await Os.findAll({
+      attributes: [
+      'status',
+      [sequelize.fn('COUNT', sequelize.col('status')), 'count']
+      ],
+      group: ['status']
+    });
+    // allOsResume será um array de objetos: [{ status: 'Aberto', count: 5 }, ...]
+    return res.status(200).json({
+      data: allOsResume
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      error: 'Erro ao buscar OS por parâmetros.'
+    })
+  }
+}
 // Função para criar uma nova OS.
 const createOs = async (req, res) => {
   try {
@@ -208,14 +256,17 @@ const createOs = async (req, res) => {
       description,
       status = 'Aberto', // Status inicial da OS.
       priority,
-      budget=0,
-      discount=0,
+      budget = 0,
+      discount = 0,
     } = req.body;
+
+    console.log("BODY:", req.body);         // Campos do formulário
+    console.log("FILES:", req.files);   
 
     // Verificando se os campos obrigatórios estão preenchidos.
     if(!title, !priority, !description){
       return res.status(400).json({
-        message: 'Os campos de título, prioridade, atribuído a e descrição são obrigatórios.'
+        message: 'Os campos de título, prioridade a e descrição são obrigatórios.'
       });
     }
     // Verificando se o usuário atribuído existe.
@@ -256,6 +307,34 @@ const createOs = async (req, res) => {
         message: 'Erro ao criar OS.'
       });
     }
+    // Verificando se as fotos vieram do equipamento
+    const images = req.files;
+    if(images){
+      // Verificando se existem imagens no array...
+      if(images.length > 0){
+        const imageOsEntry = await Files.findAll({
+          where: {
+            osId: newOs.osId
+          }
+        })
+        if(imageOsEntry){
+          await Files.destroy({
+            where: {
+              osId: newOs.osId
+            }
+          })
+        }
+        // Criando as fotos vinculadas a OS criada..
+        for (const image of images) {
+          await Files.create({
+            fileName: image.originalname,
+            fileUrl: image.path,
+            osId: newOs.osId,
+            fileType: 'entrada_os'
+          });
+        }
+      } 
+    }
     // Retornando a OS criada.
     return res.status(201).json({
       message: 'OS criada com sucesso.',
@@ -294,6 +373,34 @@ const updateOs = async (req, res) => {
     os.budget = budget || os.budget;
     os.discount = discount || os.discount;
 
+    // Verificando se tem atualização de imagens
+    const images = req.files;
+    if(images){
+      // Verificando se existem imagens no array...
+      if(images.length > 0){
+        const imageOsEntry = await Files.findAll({
+          where: {
+            osId: newOs.osId
+          }
+        })
+        if(imageOsEntry){
+          await Files.destroy({
+            where: {
+              osId: newOs.osId
+            }
+          })
+        }
+        // Criando as fotos vinculadas a OS criada..
+        for (const image of images) {
+          await Files.create({
+            fileName: image.originalname,
+            fileUrl: image.path,
+            osId: newOs.osId,
+            fileType: 'entrada_os'
+          });
+        }
+      } 
+    }
     // Salvando as alterações.
     await os.save();
     
@@ -316,6 +423,7 @@ module.exports = {
   getAllOs,
   getOsById,
   getOsById_number,
+  getOsSummary,
   createOs,
   updateOs,
   getOsByParams

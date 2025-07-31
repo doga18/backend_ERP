@@ -1,7 +1,11 @@
-const { Os, User, Client } = require('../models/indexModels');
+const { Os, User, Client, Files } = require('../models/indexModels');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const { Op } = require('sequelize');
+// Para manipular arquivos.
+const fs = require('fs');
+const path = require('path');
 
 // Manipulando arquivos.
 const { tryDeleteFile } = require('../middlewares/handleFile');
@@ -18,14 +22,74 @@ const getAllClients = async (req, res) => {
     });
   }
   try {
-    const clients = await Client.findAndCountAll();
-      if(clients.count >= 1) return res.status(200).json(clients);
+    const clients = await Client.findAndCountAll(
+      // Incluindo a pesquisa de arquivos.
+      {
+        include: [
+          {
+            model: Files,
+            as: 'files',
+            attributes: ['fileName', 'fileUrl']
+          }
+        ]
+      }
+    )
+      if(clients.count >= 1){
+        // Formatando a tirando alguns campos do objeto.
+        // Removendo o password do objeto da pesquisa.
+        const clientsFiltered = clients.rows.map((client) => {
+          const { password, ...rest } = client.dataValues;
+          return rest;          
+        })
+        res.status(200).json({
+          count: clients.count,
+          rows: clientsFiltered
+        });
+      } 
       else return res.status(404).json({message: 'Nenhum cliente cadastrado.'});
-    return res.status(200).json(clients);
   } catch (error) {
+    console.log(error);
     return res.status(500).json({
       message: 'Erro ao buscar clientes.'
     });
+  }
+}
+// Rota para trazer resultados apartir de pesquisa de nomes.
+const searchClients = async (req, res) => {
+  const idUser = await getUserIdByToken(req);
+  if(!idUser) return res.status(401).json({message: 'Usuário nao autenticado.'});
+  const name = req.query.name;
+  console.log('Pesquisa no nome de: ', name);
+  try {
+    const clientsResult = await Client.findAll(
+      { 
+        where: { name: {
+          [Op.iLike]: `${name}%`
+        }
+      },
+        include: [
+          {
+            model: Files,
+            as: 'files',
+            attributes: ['fileName', 'fileUrl']
+          }
+        ]
+    })
+    if(clientsResult.length >= 1){
+      // Formatando a tirando alguns campos do objeto.
+      // Removendo o password do objeto da pesquisa.
+      const clients = clientsResult.map((client) => {
+        const { password, ...rest } = client.dataValues;
+        return rest;
+      });
+      return res.status(200).json(clients);
+    }else{
+      return res.status(404).json({message: 'Nenhum cliente encontrado.'});
+    }
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({message: 'Erro ao buscar clientes.'});
   }
 }
 // Criando um Client
@@ -79,6 +143,21 @@ const createNewClient = async (req, res) => {
       autorizationContactPhone,
       autorizationContactEmail
     });
+    // Verificando se a foto de perfil foi informada
+    if(req.file){
+      // Localizando a foto referente ao usuário...
+      const profileImageNew = await Files.findOne({where: {clientId: targetClient.clientId}});
+      if(profileImageNew){
+        await profileImageNew.destroy();
+      }
+      // Criando uma nova foto.
+      const newProfileImage = await Files.create({
+        fileName: req.file.filename,
+        fileUrl: req.file.path,
+        clientId: targetClient.clientId,
+        fileType: 'perfil_cliente'
+      });
+    }
     // const newClient = await Client.create({ name, email, phone });
     return res.status(201).json(newClient);
   } catch (error) {
@@ -90,6 +169,14 @@ const createNewClient = async (req, res) => {
 // Editando um Client
 const editClient = async (req, res) => {
   try {
+    // Verificando se o arquivo de perfil foi informado.
+    // console.log('Editando o client: ', req.params.id);
+    // console.log('Arquivos recebidos: ', req.file);
+    if(!req.body){
+      return res.status(400).json({
+        message: 'Os campos de nome, email, contato e endereço são obrigatórios.'
+      });
+    }
     // Verificando se o usuário está logado.
     const idUser = await getUserIdByToken(req);
     if(!idUser){
@@ -125,8 +212,23 @@ const editClient = async (req, res) => {
     }
     // Verificando se o email foi alterado e se foi, verificando se outro usuário já não possui esse email.
     if(email !== targetClient.email ){
-      const emailExists = await Cliente.findOne({where: { email }});
+      const emailExists = await Client.findOne({where: { email }});
       if(emailExists) return res.status(400).json({message: 'Email em uso, tente outro.'});
+    }
+    // Verificando se a foto de perfil foi informada
+    if(req.file){
+      // Localizando a foto referente ao usuário...
+      const profileImageNew = await Files.findOne({where: {clientId: targetClient.clientId}});
+      if(profileImageNew){
+        await profileImageNew.destroy();
+      }
+      // Criando uma nova foto.
+      const newProfileImage = await Files.create({
+        fileName: req.file.filename,
+        fileUrl: req.file.path,
+        clientId: targetClient.clientId,
+        fileType: 'perfil_cliente'
+      });
     }
     // Editando o cliente.
     targetClient.name !== name ? targetClient.name = name : targetClient.name = targetClient.name;
@@ -153,6 +255,7 @@ const editClient = async (req, res) => {
 
 module.exports = {
   getAllClients,
+  searchClients,
   createNewClient,
   editClient
 }
