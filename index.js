@@ -23,8 +23,17 @@ app.use(express.json());
 //app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.urlencoded({ extended: true }));
 
+// Verificando o ambiente que está rodando
+const allowedOrigins = if(process.env.NODE_ENV === 'production') (
+    return ['https://frontend-3frxlvfaj-douglas-israel-pfeiffer-serafims-projects.vercel.app'];
+  ) else if(process.env.NODE_ENV === 'development') (
+    return ['http://localhost:5173', 'http://localhost:3001'];
+  ) else if(process.env.NODE_ENV === 'test') (
+    return ['http://localhost:5173', 'http://localhost:3001'];
+  );
+
 // Resolvendo pendências de CORS, setando frontend confiável.
-app.use(cors({ credentials: true, origin: "http://localhost:5173", methods: ["GET", "POST", "PUT", "DELETE"], allowedHeaders: ["Content-Type", "Authorization"] }));
+app.use(cors({ credentials: true, origin: allowedOrigins, methods: ["GET", "POST", "PUT", "DELETE"], allowedHeaders: ["Content-Type", "Authorization"] }));
 
 // Routes.
 const router = require("./routes/Router");
