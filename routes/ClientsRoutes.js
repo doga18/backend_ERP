@@ -12,7 +12,7 @@ const {
   searchClients,
   createNewClient,
   editClient
-} = require('../controllers/ClientsController');
+} = require('../controllers/clientsController');
 
 // Middlewares
 const { authGuard } = require('../middlewares/authGuard');
