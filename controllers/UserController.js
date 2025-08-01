@@ -3,7 +3,9 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { passHash, generateToken } = require("../utils/passHash");
 // Manipulando arquivos.
-const { tryDeleteFile } = require("../middlewares/handleFile");
+const { tryDeleteFile } = require('../middlewares/handleFile');
+// Importando função que pega o usuário requisitor
+const { getUserIdByToken } = require('../utils/getIdUserbytoken');
 
 // Função para Verificar se o usuário que está atualizando o usuário ele tem permissão para fazer isso.
 const verifyUserToAlter = async (requesterRole, targetRole) => {
@@ -23,6 +25,41 @@ const roleMapping = {
   5: 'Supplier'
 };
 
+const validUserLogged = async (req, res) => {
+  try {
+    // Verificando se o usuário está logado.
+    const idUser = await getUserIdByToken(req);
+    if (!idUser) {
+      return res.status(401).json({
+        message: 'Usuário nao autenticado.'
+      });
+    }
+    return res.status(200).json({
+      message: 'Usuário autenticado com sucesso.',
+      userId: idUser
+    });
+  } catch (error) {
+    if(error.message.includes('jwt must be provided')) {
+      return res.status(401).json({
+        message: 'Token não fornecido.'
+      });
+    }
+    if(error.message.includes('jwt expired')) {
+      return res.status(401).json({
+        message: 'Token expirado.'
+      });
+    }
+    if(error.message.includes('invalid signature')) {
+      return res.status(401).json({
+        message: 'Token inválido.'
+      });
+    }
+    console.log('Erro interno: ', error);
+    return res.status(500).json({
+      message: 'Erro ao validar usuário logado.'
+    });
+  }
+}
 // Função para buscar todos os usuários do banco de dados, excluindo a senha e o último hash de senha.
 const getAllUsers = async (req, res) => {
   try {
@@ -313,6 +350,7 @@ const renewPassword = async (req, res) => {
 
 
 module.exports = {
+  validUserLogged,
   getAllUsers,
   getSummaryClients,
   createUser,

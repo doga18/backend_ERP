@@ -13,6 +13,7 @@ const { tryDeleteFile } = require('../middlewares/handleFile');
 const { getUserIdByToken } = require('../utils/getIdUserbytoken');
 
 // Funções gerais para manipulação de Clients.
+
 // Função para contar quantos clientes existem na base de dados.
 const getAllClients = async (req, res) => {
   const idUser = await getUserIdByToken(req);
