@@ -14,9 +14,58 @@ const { getUserIdByToken } = require('../utils/getIdUserbytoken');
 
 // Funções gerais para manipulação de Clients.
 
+// Get Cliente por id
+const getClientById = async (req, res) => {
+  const idUser = await getUserIdByToken(req);
+  if (!idUser) {
+    return res.status(401).json({
+      message: 'Usuário nao autenticado.'
+    });
+  }
+  try {
+    const client = await Client.findByPk(req.params.id, {
+      // Limpando o password do retorno.
+      attributes: { exclude: ['password'] },
+      include: [
+        {
+          model: Files,
+          as: 'files',
+          attributes: ['fileName', 'fileUrl']
+        }
+      ]
+    });
+    if (client) {
+      return res.status(200).json(client);
+    } else {
+      return res.status(404).json({
+        message: 'Cliente nao encontrado.'
+      });
+    }
+  } catch (error) {
+    //console.error('Erro ao buscar Cliente pelo ID:', error);
+    return res
+      .status(500)
+      .json({
+        message: 'Erro ao buscar Cliente pelo ID.',
+        error: error.message
+      })
+      [
+        {
+          model: Files,
+          as: 'files',
+          attributes: ['fileName', 'fileUrl']
+        }
+      ]
+  }
+}
 // Função para contar quantos clientes existem na base de dados.
 const getAllClients = async (req, res) => {
   const idUser = await getUserIdByToken(req);
+  // Parametros de controle de paginação.
+  const limit = parseInt(req.query.limit) || 10; // Limite de resultados por página, padrão é 10
+  const page = parseInt(req.query.page) || 1; // Página atual, padrão é 1
+  const offset = (page - 1) * limit; // Cálculo do offset para a consulta
+
   if (!idUser) {
     return res.status(401).json({
       message: 'Usuário nao autenticado.'
@@ -32,7 +81,10 @@ const getAllClients = async (req, res) => {
             as: 'files',
             attributes: ['fileName', 'fileUrl']
           }
-        ]
+        ],
+        order: [['createdAt', 'DESC']], // Ordenando por data de criação
+        limit: limit, // Limite de resultados por página
+        offset: offset, // Offset para a paginação
       }
     )
       if(clients.count >= 1){
@@ -43,7 +95,9 @@ const getAllClients = async (req, res) => {
           return rest;          
         })
         res.status(200).json({
-          count: clients.count,
+          total: clients.count,
+          totalPages: Math.ceil(clients.count / limit), // Total de páginas
+          currentePage: page, // Página atual
           rows: clientsFiltered
         });
       } 
@@ -243,9 +297,21 @@ const editClient = async (req, res) => {
     targetClient.country !== country ? targetClient.country = country : targetClient.country = targetClient.country;
     targetClient.zipCode !== zipCode ? targetClient.zipCode = zipCode : targetClient.zipCode = targetClient.zipCode;
     await targetClient.save();
+    // Pesquisando o client novamente para garantir que os dados estão atualizados.
+    const newData = await Client.findByPk(targetClient.clientId, {
+      // Limpando o password do retorno.
+      attributes: { exclude: ['password'] },
+      include: [
+        {
+          model: Files,
+          as: 'files',
+          attributes: ['fileName', 'fileUrl']
+        }
+      ]
+      });
     return res.status(200).json({
       message: "Cliente editado com sucesso.",
-      user: targetClient
+      user: newData
     });
   } catch (error) {
     console.log(error);
@@ -255,6 +321,7 @@ const editClient = async (req, res) => {
 }
 
 module.exports = {
+  getClientById,
   getAllClients,
   searchClients,
   createNewClient,

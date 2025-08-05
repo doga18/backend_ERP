@@ -8,6 +8,7 @@ const { photoValidation, imagePerfilValidation } = require('../middlewares/photo
 const { imageUpload } = require('../middlewares/imageUpload');
 
 const {
+  getClientById,
   getAllClients,
   searchClients,
   createNewClient,
@@ -19,6 +20,7 @@ const { authGuard } = require('../middlewares/authGuard');
 
 // Rotas dos Clients
 router.get('/qtd', authGuard, getAllClients);
+router.get('/:id', authGuard, getClientById);
 router.get('/searchClients', authGuard, searchClients);
 router.post('/', authGuard, createNewClient);
 router.put('/:id', authGuard, imageUpload.single('imagePerfil'), imagePerfilValidation(), editClient);
