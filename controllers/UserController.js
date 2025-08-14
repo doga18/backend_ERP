@@ -1,4 +1,4 @@
-const { User, Role} = require("../models/indexModels");
+const { User, Role, Files} = require("../models/indexModels");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { passHash, generateToken } = require("../utils/passHash");
@@ -65,7 +65,7 @@ const getAllUsers = async (req, res) => {
   try {
     const users = await User.findAll({
       attributes: { exclude: ['password', 'lastpassword'] },
-      include: { model: Role, attributes: ['name'] }
+      include: { model: Role, as : 'role', attributes: ['name'] }
     });
     return res.status(200).json(users);
   } catch (error) {
@@ -73,17 +73,49 @@ const getAllUsers = async (req, res) => {
     return res.status(500).json({ error: 'Erro ao buscar usuários.' });
   }
 }
+// Get users by Id
+const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByPk(userId = id, {
+      attributes: { exclude: ['password', 'lastpassword'] },
+      include: { 
+        model: Role, as: 'role', attributes: ['name'],
+        model: Files, as: 'files', attributes: ['fileName', 'fileUrl'] 
+      }
+    });
+    if (!user) {
+      return res.status(404).json({ message: 'Usuário nao encontrado.' });
+    }
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error('Erro ao buscar usuário por ID:', error);
+    return res.status(500).json({ error: 'Erro ao buscar usuário por ID.' });
+  }
+}
 // GetQtd about Users
-const getSummaryClients = async (req, res) => {
+const getSummaryUsers = async (req, res) => {
   try {
     const usersCount = await User.findAndCountAll({
       // Removendo dados sensíveis para passar para a api..
       attributes: { exclude: ['password', 'lastpassword', 'hash_recover_password'] },
-      include: {
-        model: Role,
-        as: 'role',
-        attributes: ['name']
-      }
+      include: [
+        {
+          model: Role,
+          as: 'role',
+          attributes: ['name']
+        },
+        {
+          model: Files,
+          as: 'files',
+          attributes: ['fileName', 'fileUrl']
+        }
+      ],
+      order: [
+        ['createdAt', 'DESC']
+      ],
+      limit: 10,
+      offset: 0
     });
     return res.status(200).json({
       count: usersCount.count,
@@ -256,29 +288,63 @@ const updateUserSelf = async (req, res) => {
     const requesteruserId = req.user.userId;
     const { userTarget } = req.params;
     const { name, lastname, email, password } = req.body;
+    console.log('os dados que vieram do body foram:')
+    console.log(req.body);
     // Verificando se o usuário existe.
-    const userT = await User.findByPk(userTarget);
+    const userT = await User.findByPk(userTarget);    
     if(!userT) {
       return res.status(404).json({ message: 'Usuário não encontrado.' });
+    }
+    // Verificando se o email é diferente do atual e se for, verificar se o email já está em uso no banco de dados
+    const emailExists = await User.findOne({ where: { email } });
+    if(emailExists && emailExists.email !== userT.email){
+      return res.status(400).json({ message: 'Email ja cadastrado.' });
     }
     // Verificando se o Id do usuário logado é o mesmo que o Id do usuário que está tentando atualizar.
     if(requesteruserId === userT.userId){
       // Atualizando os dados do usuário.
-      if(!name, !lastname, !email, !password) {
-        return res.status(400).json({ message: 'Todos os campos são obrigatórios.' });
+      if(!name || name !== ''){
+        userT.name = name;
       }
-      userT.name === name ? userT.name : name;
-      userT.lastname === lastname ? userT.lastname : lastname;
-      userT.email === email ? userT.email : email;
+      if(!lastname || lastname !== '') {
+        userT.lastname = lastname;
+      }
+      if(!email || email !== '') {
+        userT.email = email;
+      }
+      // Verificando se existe arquivos na requisição.
+      const files = req.file;
+      if(files) {
+        // Atualizando a imagem do usuário.
+        userT.image = files.imagePerfil;
+        // Deletando a imagem antiga.
+        const destroy = await Files.destroy({ where: { userId: userT.userId, fileType: 'perfil_user' } });
+        // Criando os dados da imagem
+        await Files.create({
+          fileName: files.originalname,
+          fileUrl: files.path,
+          userId: userT.userId,
+          fileType: 'perfil_user'
+        })
+      }
       // Verificando se a senha foi informada, caso contrário não atualiza a senha.
-      if(password !== userT.password && password !== userT.lastpassword){
-        // Se a senha foi informada, verificando se a senha é diferente da atual e também diferente da última senha.
-        // Salvando a senha atual como a última senha.
-          userT.lastpassword = userT.password;
-          // Atualizando a senha do usuário.
-          userT.password = await passHash(password);
-          await userT.save();
-          return res.status(200).json({ message: 'Os dados foram atualizados e a senha foi alterada com sucesso.' });
+      if(!password || password !== '' && password !== userT.password && password !== userT.lastpassword){
+      // Se a senha foi informada, verificando se a senha é diferente da atual e também diferente da última senha.
+        // Verificando se a senha nova é igual a senha atual ou a última senha.
+        const compareNewPass = await bcrypt.compare(password, userT.password);
+        const compareLastPass = await bcrypt.compare(password, userT.lastpassword);
+        if(compareNewPass){
+          return res.status(400).json({ message: 'A nova senha precisa ser diferente da senha atual.' });
+        }
+        if(compareLastPass){
+          return res.status(400).json({ message: 'A nova senha precisa ser diferente da última senha.' });
+        }
+        // Se foi tudo validade, a senha atual é salva em lastPassword e a nova senha é salva em password.
+        userT.lastpassword = userT.password;
+        // Atualizando a senha do usuário.
+        userT.password = await passHash(password);        
+        await userT.save();
+        return res.status(200).json({ message: 'Os dados foram atualizados e a senha foi alterada com sucesso.' });
       }else{
         await userT.save();
         return res.status(200).json({ Message: 'Os dados foram atualizados, mas a senha não foi alterada, pois é igual a senha atual ou a última senha.' });
@@ -287,6 +353,7 @@ const updateUserSelf = async (req, res) => {
       return res.status(403).json({ message: 'Aqui você só pode atualizar seus próprios dados.' });
     }
   } catch (error) {
+    console.log('Erro ao atualizar usuário:', error);
     res.status(500).json({ message: 'Erro ao atualizar usuário.' });
   }
 }
@@ -352,7 +419,8 @@ const renewPassword = async (req, res) => {
 module.exports = {
   validUserLogged,
   getAllUsers,
-  getSummaryClients,
+  getUserById,
+  getSummaryUsers,
   createUser,
   loginUser,
   updateUser,

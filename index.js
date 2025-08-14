@@ -28,6 +28,7 @@ const allowedOrigins = (() => {
   if (process.env.NODE_ENV === 'production') {
     return ['https://frontend-3frxlvfaj-douglas-israel-pfeiffer-serafims-projects.vercel.app'];
   } else if (process.env.NODE_ENV === 'development') {
+    // return ['http://localhost:3001'];
     return ['http://localhost:5173', 'http://localhost:3001'];
   } else if (process.env.NODE_ENV === 'test') {
     return ['http://localhost:5173', 'http://localhost:3001'];

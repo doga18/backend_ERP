@@ -27,8 +27,12 @@ const Files = sequelize.define('Files', {
     type: DataTypes.INTEGER,
     allowNull: true,
   },
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
   fileType: {
-    type: DataTypes.ENUM('perfil_cliente', 'entrada_os', 'saida_os'),
+    type: DataTypes.ENUM('perfil_cliente', 'entrada_os', 'saida_os', 'perfil_user'),
     allowNull: false,
   },
 }, {timestamps: true});
