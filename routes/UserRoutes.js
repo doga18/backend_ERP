@@ -10,6 +10,7 @@ const { imageUpload } = require('../middlewares/imageUpload');
 const {
   validUserLogged,
   createUser,
+  newUserByDashboard,
   loginUser,
   updateUser,
   updateUserSelf,
@@ -29,6 +30,7 @@ const { authGuard } = require('../middlewares/authGuard');
 // Rotas do user.
 router.get('/validUserLogged', validUserLogged);
 router.post('/', createUser);
+router.post('/newUserByDashboard', authGuard, newUserByDashboard);
 router.post('/auth', loginUser);
 // router.put('/edit/:id', imageUpload.single('imagePerfil'), photoValidation(), authGuard, updateUser)
 router.put('/edit/:id', imageUpload.single('imagePerfil'), imagePerfilValidation(), authGuard, updateUser)

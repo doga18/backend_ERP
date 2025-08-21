@@ -7,17 +7,17 @@ const imageStorage = multer.diskStorage({
   destination: function(req, file, cb){
     let folder = ""
 
-    if(req.baseUrl.includes("images")){
+    if(req.originalUrl.includes("images")){
       folder = "images";      
-    } else if(req.baseUrl.includes("company")){
+    } else if(req.originalUrl.includes("company")){
       folder = "company";
-    } else if(req.baseUrl.includes("users")){
+    } else if(req.originalUrl.includes("users")){
       folder = "users";
-    } else if(req.baseUrl.includes("products")){
+    } else if(req.originalUrl.includes("products")){
       folder = "products";
-    } else if(req.baseUrl.includes("suppliers")){
+    } else if(req.originalUrl.includes("suppliers")){
       folder = "suppliers";
-    } else if(req.baseUrl.includes("os")){
+    } else if(req.originalUrl.includes("os")){
       folder = "os";
     }
     // cb === Callback.

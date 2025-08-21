@@ -1,4 +1,4 @@
-const { User, Os, Files } = require('../models/indexModels');
+const { User, Os, Files, Client } = require('../models/indexModels');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
@@ -27,6 +27,8 @@ const getAllOs = async (req, res) => {
 
   try {
     const { count, rows } = await Os.findAndCountAll({
+      distinct: true, // Força a contagem distinta
+      col: 'osId', // Garante que conta pela PK da tabela principal.
       include: [
         {
           model: User,
@@ -37,6 +39,10 @@ const getAllOs = async (req, res) => {
           model: Files,
           as: 'files',
           attributes: ['fileName', 'fileUrl']
+        },{
+          model: Client,
+          as: 'client',
+          attributes: ['clientId', 'name']
         }
       ],
       order: [['createdAt', 'DESC']],
@@ -47,7 +53,7 @@ const getAllOs = async (req, res) => {
       }
     })
     if(rows){
-      // Retornando os dados das OS encontradas e informações de paginação.      
+      // Retornando os dados das OS encontradas e informações de paginação.
       return res.status(200).json({
         total: count, // Total de OS encontradas.
         totalPages: Math.ceil(count / limit), // Total de páginas.
@@ -258,6 +264,7 @@ const createOs = async (req, res) => {
       priority,
       budget = 0,
       discount = 0,
+      clientAssigned,
     } = req.body;
 
     console.log("BODY:", req.body);         // Campos do formulário
@@ -267,6 +274,13 @@ const createOs = async (req, res) => {
     if(!title, !priority, !description){
       return res.status(400).json({
         message: 'Os campos de título, prioridade a e descrição são obrigatórios.'
+      });
+    }
+    // Verificando se os valores que estão vindo em budget e discount estão corretos.
+    if(budget < 0 || discount < 0 || isNaN(budget) || isNaN(discount)){
+      // Verificando se está vindo caracteres ao invés de números.
+      return res.status(400).json({
+        message: 'Os valores precisam ser maiores que zero e ser numéricos.'
       });
     }
     // Verificando se o usuário atribuído existe.
@@ -291,6 +305,13 @@ const createOs = async (req, res) => {
         message: 'Status inválido. O status válido é: ' + validStatuses.join(', ')
       });
     }
+    // Verificando se o cliente vinculado existe ou não
+    const existsClient = await Client.findByPk(clientAssigned);
+    if (!existsClient) {
+      return res.status(404).json({
+        message: 'Cliente vinculado nao encontrado.'
+      });
+    }
     // Criando a OS.
     const newOs = await Os.create({
       title,
@@ -299,7 +320,8 @@ const createOs = async (req, res) => {
       priority,
       assignedTo: userExists.userId, // Atribuindo o ID do usuário autenticado.
       budget,
-      discount
+      discount,
+      clientAssigned
     });
     // Verificando se a OS foi criada com sucesso.
     if (!newOs) {

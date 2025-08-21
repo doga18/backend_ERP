@@ -9,7 +9,7 @@ const { getUserIdByToken } = require('../utils/getIdUserbytoken');
 
 // Função para Verificar se o usuário que está atualizando o usuário ele tem permissão para fazer isso.
 const verifyUserToAlter = async (requesterRole, targetRole) => {
-  const roleHierarchy = ['Admin', 'Owner', 'Manager', 'Employee', 'Supllier']
+  const roleHierarchy = ['Admin', 'Owner', 'Manager', 'Employee', 'Supplier']
   const requesterIndex = roleHierarchy.indexOf(requesterRole);
   const targertIndex = roleHierarchy.indexOf(targetRole);
   console.log(`O usuário requisitor tem permissão ${requesterIndex} e o alvo da edição tem a permissão de ${targertIndex}`);
@@ -34,9 +34,14 @@ const validUserLogged = async (req, res) => {
         message: 'Usuário nao autenticado.'
       });
     }
+    const user = await User.findByPk(idUser);
+    const userFiltered = user.toJSON();
+    delete userFiltered.password;
+    delete userFiltered.lastpassword;
+    const userAutenticated = userFiltered;
     return res.status(200).json({
       message: 'Usuário autenticado com sucesso.',
-      userId: idUser
+      user: userAutenticated
     });
   } catch (error) {
     if(error.message.includes('jwt must be provided')) {
@@ -65,7 +70,14 @@ const getAllUsers = async (req, res) => {
   try {
     const users = await User.findAll({
       attributes: { exclude: ['password', 'lastpassword'] },
-      include: { model: Role, as : 'role', attributes: ['name'] }
+      include: [
+        {
+          model: Role, as: 'role', attributes: ['name']
+        },
+        {
+          model: Files, as: 'files', attributes: ['fileName', 'fileUrl']
+        }
+      ]
     });
     return res.status(200).json(users);
   } catch (error) {
@@ -79,10 +91,14 @@ const getUserById = async (req, res) => {
     const { id } = req.params;
     const user = await User.findByPk(userId = id, {
       attributes: { exclude: ['password', 'lastpassword'] },
-      include: { 
-        model: Role, as: 'role', attributes: ['name'],
-        model: Files, as: 'files', attributes: ['fileName', 'fileUrl'] 
-      }
+      include: [
+        {
+          model: Role, as: 'role', attributes: ['name']
+        },
+        {
+          model: Files, as: 'files', attributes: ['fileName', 'fileUrl']
+        }
+    ]
     });
     if (!user) {
       return res.status(404).json({ message: 'Usuário nao encontrado.' });
@@ -96,6 +112,7 @@ const getUserById = async (req, res) => {
 // GetQtd about Users
 const getSummaryUsers = async (req, res) => {
   try {
+    const limit = req.query.limit || 100;
     const usersCount = await User.findAndCountAll({
       // Removendo dados sensíveis para passar para a api..
       attributes: { exclude: ['password', 'lastpassword', 'hash_recover_password'] },
@@ -114,7 +131,7 @@ const getSummaryUsers = async (req, res) => {
       order: [
         ['createdAt', 'DESC']
       ],
-      limit: 10,
+      limit: limit,
       offset: 0
     });
     return res.status(200).json({
@@ -177,7 +194,62 @@ const createUser = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Erro ao criar usuário.' });
   }
-  
+}
+
+// NewUserByDashboard
+const newUserByDashboard = async (req, res) => {
+  try {
+    if(!req.body) {
+      return res.status(400).json({ error: 'Dados inválidos.' });
+    }
+    const {
+      name,
+      lastname,
+      email,
+      password,
+      avaiable=false,
+      roleId=5
+    } = req.body;
+    // Validando os dados recebidos.
+    if (!name || !lastname || !email || !password) {
+      return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
+    }
+    // Verificando se o usuário já existe.
+    const existingUser = await User.findOne({ where: { email } });
+    if(existingUser) {
+      return res.status(400).json({ error: 'Usuário já existe, tente recuperar sua senha no link http://localhost:5173/recovery/?email=' + email + '.' })
+      res.status(200)
+    }
+    // Criando o novo usuário com criptografia de senha.
+    const hashedPassword = await passHash(password);
+    // Verificando se o usuário que está criando tem permissão para setar a permissão do novo usuário
+    const hasPermission = await verifyUserToAlter(req.user.roleId, roleId);
+    if (!hasPermission) {
+      return res.status(403).json({ message: ' Vocé nao tem permissão para criar um novo usuário com essa permissão.' });
+    }
+    const newUser = await User.create({
+      name,
+      lastname,
+      email,
+      roleId: roleId,
+      avaiable: avaiable,
+      password: hashedPassword
+    })
+    // Gerando o token de autenticação.
+    const token = await generateToken(newUser.userId);
+    // Retornando o usuário criado e o token, sem a senha.
+    const userRetorned = newUser.toJSON();
+    delete userRetorned.password;
+    delete userRetorned.lastpassword;
+    userRetorned.token = token;
+    res.status(201).json({
+      user: userRetorned,
+      message: 'Usuário criado com sucesso.',
+    })
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: 'Erro ao criar usuário.' });
+  }
 }
 
 // Função para fazer login no usuário.
@@ -241,11 +313,12 @@ const updateUser = async (req, res) => {
 
     // Verificando se o usuário que está atualizando tem permissão para isso.
     const requesterRole = roleMapping[req.user.roleId]; // Supondo que o usuário autenticado tenha a propriedade 'role'.
-    const targetRole = roleMapping[user.roleId]; // Supondo que o usuário tenha a propriedade 'role'.
+    const targetRole = roleMapping[roleId]; // Supondo que o usuário tenha a propriedade 'role'.    
     console.log('requesterRole: ' + requesterRole);
     console.log('targetRole: ' + targetRole);
     const hasPermission = await verifyUserToAlter(requesterRole, targetRole);
     if (!hasPermission) {
+      console.log("Nao tem permissao" + hasPermission);
       return res.status(403).json({ message: 'Você não tem permissão para atualizar este usuário.' });
     }
 
@@ -300,16 +373,20 @@ const updateUserSelf = async (req, res) => {
     if(emailExists && emailExists.email !== userT.email){
       return res.status(400).json({ message: 'Email ja cadastrado.' });
     }
+    // Verificando se os dados sensíveis foram informados.
+    if(!name || !lastname || !email){
+      return res.status(400).json({ message: 'Dados sensíveis nao informados.' });
+    }
     // Verificando se o Id do usuário logado é o mesmo que o Id do usuário que está tentando atualizar.
     if(requesteruserId === userT.userId){
       // Atualizando os dados do usuário.
-      if(!name || name !== ''){
+      if(!name || name !== '' || name <= 3){
         userT.name = name;
       }
-      if(!lastname || lastname !== '') {
+      if(!lastname || lastname !== '' || lastname <= 3){
         userT.lastname = lastname;
       }
-      if(!email || email !== '') {
+      if(!email || email !== '' || email <= 3){
         userT.email = email;
       }
       // Verificando se existe arquivos na requisição.
@@ -419,6 +496,7 @@ const renewPassword = async (req, res) => {
 module.exports = {
   validUserLogged,
   getAllUsers,
+  newUserByDashboard,
   getUserById,
   getSummaryUsers,
   createUser,

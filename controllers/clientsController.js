@@ -65,28 +65,29 @@ const getAllClients = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10; // Limite de resultados por página, padrão é 10
   const page = parseInt(req.query.page) || 1; // Página atual, padrão é 1
   const offset = (page - 1) * limit; // Cálculo do offset para a consulta
-
+  const noLimit = req.query.page === 'no' ? true : false;
+  
   if (!idUser) {
     return res.status(401).json({
       message: 'Usuário nao autenticado.'
     });
   }
   try {
-    const clients = await Client.findAndCountAll(
-      // Incluindo a pesquisa de arquivos.
-      {
-        include: [
-          {
-            model: Files,
-            as: 'files',
-            attributes: ['fileName', 'fileUrl']
-          }
-        ],
-        order: [['createdAt', 'DESC']], // Ordenando por data de criação
-        limit: limit, // Limite de resultados por página
-        offset: offset, // Offset para a paginação
-      }
-    )
+    const queryOptions = {
+      include: [
+        {
+          model: Files,
+          as: 'files',
+          attributes: ['fileName', 'fileUrl']
+        }
+      ],
+      order: [['createdAt', 'DESC']], // Ordenando por data de criação
+    };
+    if(!noLimit){
+      queryOptions.limit = limit; // Limite de resultados por página
+      queryOptions.offset = offset; // Offset para a paginação
+    }
+    const clients = await Client.findAndCountAll(queryOptions);
       if(clients.count >= 1){
         // Formatando a tirando alguns campos do objeto.
         // Removendo o password do objeto da pesquisa.
